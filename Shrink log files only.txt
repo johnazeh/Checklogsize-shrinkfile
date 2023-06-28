@@ -1,0 +1,28 @@
+ -- Shrink (log files only)
+    select @filetypefilter = 1 -- 0 = data files only, 1 = log files only, null = all
+    select
+        @ord = ord,
+        @sql = replace( replace(
+            'use [{dbname}];{pad} {file}'
+            , '{dbname}', dbname )
+            , '{pad}', replicate( ' ', @maxdbnamelen - len(dbname) ) )
+        from @db d where d.ord = @ord
+    select
+        @sql = replace(
+            @sql
+            , '{file}', replace( replace(
+                'dbcc shrinkfile ( ''{filename}'',{pad} 0, truncateonly ); {file}'
+                , '{filename}', f.name )
+                , '{pad}', replicate( ' ', @maxfilenamelen - len(f.name) ) )
+            )
+            from @db d join sys.master_files f (nolock) on d.dbname = db_name(f.database_id) and f.type = isnull( @filetypefilter, f.type ) where d.ord = @ord
+	select @sql = replace( @sql, ' {file}', '' )
+	begin try
+		print ( '-- Executing: ' + @sql )
+		exec( @sql )
+	end try
+	begin catch
+		print '  Error: ' + error_message()
+	end catch
+    */
+end
